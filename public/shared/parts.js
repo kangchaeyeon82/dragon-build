@@ -1,6 +1,8 @@
 // 다나와 검색 결과 → 사이트에서 쓰는 부품 객체로 정리 (쉬운 이름, 쉬운 스펙, 호환성 속성)
 import { CATE, CPUS, GPUS, QUERIES, BAD_WORDS, SLOTS } from './catalog.js';
-import { search } from './danawa.js';
+// 가격 조회 함수는 실행 환경에서 넣어 준다 (브라우저 → /api/danawa)
+let search = async () => { throw new Error('가격 조회 함수가 설정되지 않았어요'); };
+export function setSearch(fn) { search = fn; }
 
 export const norm = (t) => (t || '').replace(/\s+/g, '').toUpperCase();
 

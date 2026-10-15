@@ -7,3 +7,7 @@ data/
 node_modules/
 __pycache__/
 *.log
+
+.vercel
+.env*
+!.env.example

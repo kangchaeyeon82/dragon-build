@@ -1,5 +1,6 @@
 // 신룡 상담: Gemini로 답변, 리뷰·성능 비교처럼 바깥 정보가 필요한 질문은 Firecrawl 검색 결과를 근거로 붙인다.
-const MODELS = [...new Set([process.env.GEMINI_MODEL || 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-flash-latest', 'gemini-3.5-flash'])];
+// 앞 모델이 붐비면(503) 다음 모델로. 마지막은 가볍고 빠른 lite 모델.
+const MODELS = [...new Set([process.env.GEMINI_MODEL || 'gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.7-flash', 'gemini-3.1-flash-lite'])];
 
 const SYSTEM = `너는 "신룡"이다. 컴퓨터 부품을 전혀 모르는 사람의 PC 견적 고민을 들어주는 친절한 조언자다.
 규칙:
@@ -34,13 +35,20 @@ async function gemini(contents) {
   if (!key) throw new Error('GOOGLE_API_KEY가 .env에 없습니다.');
   let lastErr;
   for (const model of MODELS) {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: 'POST',
-      headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: SYSTEM }] }, contents }),
-      signal: AbortSignal.timeout(60000),
-    });
-    const j = await r.json();
+    let r, j;
+    try {
+      // 모델 하나가 오래 걸리면 기다리지 않고 다음 모델로 넘어간다 (Vercel 함수 제한 60초 안에 끝내기)
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: SYSTEM }] }, contents }),
+        signal: AbortSignal.timeout(12000),
+      });
+      j = await r.json();
+    } catch (e) {
+      lastErr = new Error('신룡이 생각하는 데 너무 오래 걸렸어요. 잠시 후 다시 물어봐 주세요.');
+      continue;
+    }
     if (r.ok) {
       const parts = j.candidates?.[0]?.content?.parts || [];
       return parts.filter((p) => p.text && !p.thought).map((p) => p.text).join('').trim();

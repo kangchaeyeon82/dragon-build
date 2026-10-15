@@ -1,26 +1,15 @@
-// 다나와 조회 계층: k-skill danawa-price-search 스크립트를 파이썬으로 실행하고 결과를 캐시한다.
-import { spawn, execSync } from 'node:child_process';
+// 로컬 서버용 다나와 조회: lib/danawa_ext.py(k-skill 래퍼)를 파이썬으로 실행하고 결과를 파일에 캐시한다.
+// (Vercel에서는 api/danawa.py 가 같은 일을 하고 CDN이 캐시한다)
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const EXT = path.join(here, 'danawa_ext.py');
+const EXT = path.join(here, '..', 'lib', 'danawa_ext.py');
 const CACHE_FILE = path.join(here, '..', 'data', 'cache.json');
 const TTL = 6 * 60 * 60 * 1000; // 6시간
 const PYTHON = process.env.PYTHON || 'python';
-
-let skillPath = process.env.DANAWA_SKILL_PATH || null;
-
-export function resolveSkill() {
-  if (skillPath && fs.existsSync(skillPath)) return skillPath;
-  const out = execSync('npx -y @nomadamas/k-skill@0 path danawa-price-search scripts/danawa_search.py', {
-    encoding: 'utf8', shell: true, stdio: ['ignore', 'pipe', 'ignore'],
-  });
-  skillPath = out.trim().split(/\r?\n/).pop().trim();
-  if (!fs.existsSync(skillPath)) throw new Error('k-skill danawa 스크립트를 찾지 못했습니다: ' + skillPath);
-  return skillPath;
-}
 
 // ---- 캐시 ----
 let cache = {};
@@ -53,7 +42,7 @@ function limited(fn) {
 
 function runPy(args) {
   return new Promise((resolve, reject) => {
-    const p = spawn(PYTHON, ['-I', '-X', 'utf8', EXT, resolveSkill(), ...args], { windowsHide: true });
+    const p = spawn(PYTHON, ['-I', '-X', 'utf8', EXT, ...args], { windowsHide: true });
     let out = '', err = '';
     p.stdout.setEncoding('utf8').on('data', (d) => (out += d));
     p.stderr.setEncoding('utf8').on('data', (d) => (err += d));
@@ -90,16 +79,11 @@ async function cached(key, fn, isEmpty) {
   return data;
 }
 
+// api/danawa.py 와 같은 모양의 JSON을 돌려준다
 export function search(query) {
-  return cached('s:' + query, () => runPy(['search', query]), (d) => !d || !d.items || d.items.length === 0)
-    .then((d) => d.items.map((it) => ({ ...it, maker: it.maker ? it.maker.replace(/<[^>]+>/g, '') : null })));
+  return cached('s:' + query, () => runPy(['search', query]), (d) => !d || !d.items || d.items.length === 0);
 }
 
 export function offers(pcode) {
-  return cached('o:' + pcode, () => runPy(['offers', String(pcode), '--limit', '40']), (d) => !d || !d.offers);
-}
-
-export function cacheAge(query) {
-  const hit = cache['s:' + query];
-  return hit ? hit.ts : null;
+  return cached('o:' + pcode, () => runPy(['offers', String(pcode)]), (d) => !d || !d.offers);
 }

@@ -5,7 +5,8 @@
   "description": "드래곤 견적 — 예산과 용도로 PC 꿀조합과 부품 최저가를 찾아주는 사이트",
   "type": "module",
   "scripts": {
-    "start": "node server/server.js"
+    "start": "node server/server.js",
+    "snapshot": "node server/snapshot.js"
   },
   "engines": {
     "node": ">=22"

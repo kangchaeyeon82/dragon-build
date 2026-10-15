@@ -1,0 +1,18 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "functions": {
+    "api/danawa.py": {
+      "includeFiles": "lib/**",
+      "maxDuration": 60
+    },
+    "api/ask.js": {
+      "maxDuration": 60
+    }
+  },
+  "regions": [
+    "icn1"
+  ]
+}

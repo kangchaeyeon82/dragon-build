@@ -1,4 +1,8 @@
 // 드래곤 견적 프론트엔드
+// 꿀조합 계산은 브라우저에서 하고, 서버(/api/danawa, /api/ask)는 가격 조회와 AI 상담만 맡는다.
+import { SLOTS } from './shared/catalog.js';
+import { setSearch, searchSlot } from './shared/parts.js';
+import { loadData, recommend, adjust } from './shared/engine.js';
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -111,10 +115,31 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal
 
 async function api(path, opts) {
   const r = await fetch(path, opts && { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(opts) });
-  const j = await r.json();
+  const j = await r.json().catch(() => ({ error: '서버 응답을 읽지 못했어요' }));
   if (!r.ok || j.error) throw new Error(j.error || '요청 실패');
   return j;
 }
+
+// 다나와 조회: 한 번에 4개까지만 보내서 다나와·서버에 부담을 줄인다
+const DANAWA_CONC = 4;
+let danawaRunning = 0;
+const danawaQueue = [];
+function danawa(params) {
+  return new Promise((resolve, reject) => {
+    const run = async () => {
+      danawaRunning++;
+      try { resolve(await api('/api/danawa?' + new URLSearchParams(params))); } catch (e) { reject(e); } finally {
+        danawaRunning--;
+        if (danawaQueue.length) danawaQueue.shift()();
+      }
+    };
+    danawaRunning < DANAWA_CONC ? run() : danawaQueue.push(run);
+  });
+}
+setSearch(async (q) => {
+  const r = await danawa({ cmd: 'search', q });
+  return (r.items || []).map((it) => ({ ...it, maker: it.maker ? it.maker.replace(/<[^>]+>/g, '') : null }));
+});
 
 function switchTab(name) {
   $$('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
@@ -130,7 +155,15 @@ async function showOffers(part, label) {
   openModal(`<p class="kicker"><span class="klabel">${esc(label)}</span> · ${esc(part.maker || '')}</p><h3>${esc(part.name)}</h3>
     <p class="m-sub">${esc((part.spec || []).join(' · '))}</p><div class="loading"><div class="spinner"></div>쇼핑몰 가격을 모으는 중…</div>`);
   try {
-    const r = await api('/api/offers?pcode=' + encodeURIComponent(part.id));
+    const raw = await danawa({ cmd: 'offers', pcode: part.id });
+    const r = {
+      url: raw.source_url,
+      offers: (raw.offers || []).map((o) => ({
+        mall: o.mall, total: o.total_price, shipping: o.shipping, free: o.is_free_shipping,
+        condition: o.payment_condition_label || null, card: o.card_name ? `${o.card_name} ${o.card_price_text || ''}`.trim() : null,
+        installment: o.installment || null, url: o.url,
+      })),
+    };
     const list = r.offers.filter((o) => o.total);
     const rows = list.map((o, i) => `
       <div class="offer"><span class="o-rank">${i + 1}</span>
@@ -145,7 +178,7 @@ async function showOffers(part, label) {
       <p class="fine">‘현금 조건’ 표시는 현금 결제 시에만 그 가격이에요. 가격·배송비는 조회 시점 기준이고 바뀔 수 있어요. 구매는 각 쇼핑몰에서 직접 진행해요.</p>
       <p><a class="ghost" style="display:inline-block;text-decoration:none" href="${esc(r.url || part.url)}" target="_blank" rel="noopener">다나와에서 자세히 보기 ↗</a></p>`;
   } catch (e) {
-    $('#modalBody').insertAdjacentHTML('beforeend', `<p class="empty-state">가격을 불러오지 못했어요: ${esc(e.message)}</p>`);
+    $('#modalBody').insertAdjacentHTML('beforeend', `<p class="empty-state">지금은 쇼핑몰 가격을 불러오지 못했어요.<br/><a href="${esc(part.url)}" target="_blank" rel="noopener">다나와에서 직접 보기 ↗</a></p>`);
     $('#modalBody .loading')?.remove();
   }
 }
@@ -216,11 +249,13 @@ async function summon() {
   const balls = $$('#balls .ball');
   let lit = 0, result = null, failed = null, done = false;
   const queue = [];
-  const es = new EventSource(`/api/wish?budget=${state.budget * 10000}&purpose=${state.purposes.join(',')}`);
-  es.addEventListener('ball', (e) => queue.push(JSON.parse(e.data).slot));
-  es.addEventListener('done', (e) => { result = JSON.parse(e.data); done = true; es.close(); });
-  es.addEventListener('fail', (e) => { failed = JSON.parse(e.data).message; done = true; es.close(); });
-  es.onerror = () => { if (!done) { failed = '서버와 연결이 끊겼어요. 서버가 켜져 있는지 확인해 주세요.'; done = true; } es.close(); };
+  (async () => {
+    try {
+      const d = await loadData((slot) => queue.push(slot));
+      result = recommend(d, state.budget * 10000, state.purposes);
+    } catch (e) { failed = e.message || '가격을 모으지 못했어요. 잠시 후 다시 시도해 주세요.'; }
+    done = true;
+  })();
 
   // 이벤트를 하나씩 천천히 보여준다 (연출)
   while (!done || queue.length) {
@@ -303,7 +338,7 @@ async function adjustSlot(slot, dir, row) {
   row.style.opacity = .5;
   try {
     const b = state.build;
-    const nb = await api('/api/adjust', { ids: b.ids, slot, dir, budget: b.budget, purpose: b.purpose });
+    const nb = adjust(await loadData(), b.ids, slot, dir, b.budget, b.purpose);
     if (nb.notice) toast(nb.notice);
     state.build = { ...nb, overBudget: false };
     renderResult();
@@ -350,9 +385,9 @@ async function loadRadar() {
   const list = $('#radarCards');
   if (!r.cache[key]) {
     list.innerHTML = Array.from({ length: 6 }, () => '<div class="skeleton"></div>').join('');
-    $('#radarRange').textContent = '불러오는 중…';
+    $('#radarRange').textContent = '불러오는 중… (처음엔 30초쯤 걸릴 수 있어요)';
     try {
-      r.cache[key] = (await api(`/api/parts?slot=${r.slot}${r.q ? '&q=' + encodeURIComponent(r.q) : ''}`)).items;
+      r.cache[key] = r.q ? await searchSlot(r.slot, r.q) : (await loadData())[r.slot];
     } catch (e) {
       list.innerHTML = `<p class="empty-state">불러오지 못했어요: ${esc(e.message)}</p>`;
       return;
@@ -496,7 +531,7 @@ $$('#chatSuggest button').forEach((b) => (b.onclick = () => sendChat(b.textConte
 (async function init() {
   setBudget(200);
   updateCapBadge();
-  try { state.slots = (await api('/api/meta')).slots; } catch { toast('서버에 연결하지 못했어요.'); }
+  state.slots = SLOTS;
   drawDragon();
   placeBalls();
   renderCats();
