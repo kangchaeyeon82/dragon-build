@@ -1,0 +1,9 @@
+# API 키 — 절대 커밋하지 않기
+.env
+
+# 다나와 가격 캐시
+data/
+
+node_modules/
+__pycache__/
+*.log

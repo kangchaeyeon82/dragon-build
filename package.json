@@ -1,0 +1,13 @@
+{
+  "name": "dragon-build",
+  "version": "1.0.0",
+  "private": true,
+  "description": "드래곤 견적 — 예산과 용도로 PC 꿀조합과 부품 최저가를 찾아주는 사이트",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

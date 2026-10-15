@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>드래곤 견적</title>
+  <meta name="description" content="예산과 용도만 고르면 PC 꿀조합을 찾아주고, 부품별 최저가를 한눈에 보여주는 사이트" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23f57c00'/%3E%3Cpath d='M9 9h7a7 7 0 0 1 0 14H9z' fill='none' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-in">
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <b>DRAGON</b><span class="brand-light">BUILD</span>
+        <small>드래곤 견적</small>
+      </a>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" role="tab" data-tab="wish">소원 빌기</button>
+        <button class="tab" role="tab" data-tab="radar">드래곤 레이더</button>
+        <button class="tab" role="tab" data-tab="capsule">캡슐 보관함 <i class="badge" id="capsuleCount" hidden>0</i></button>
+        <button class="tab" role="tab" data-tab="ask">신룡에게 묻기</button>
+      </nav>
+      <div class="live"><span class="dot"></span>DANAWA LIVE</div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ① 소원 빌기 -->
+    <section class="panel active" id="tab-wish">
+      <div class="wish-form" id="wishForm">
+        <div class="wish-card">
+          <p class="eyebrow">MAKE A WISH</p>
+          <h1 class="wish-title">예산과 용도만 알려주세요.<br />꿀조합은 저희가 찾을게요<span class="dot-o">.</span></h1>
+
+          <div class="step">
+            <div class="step-head"><span class="mono">01 / BUDGET</span><h2>예산은 얼마인가요?</h2><span class="hint">모니터·키보드 제외, 본체만</span></div>
+            <label class="budget-input">
+              <input id="budgetIn" type="text" inputmode="numeric" autocomplete="off" value="200" aria-label="예산(만원) 직접 입력" />
+              <span>만원</span>
+              <em>직접 입력</em>
+            </label>
+            <input type="range" id="budget" min="30" max="1000" step="10" value="200" aria-label="예산 조절" />
+            <div class="range-scale"><span>30만원</span><span>점을 끌거나 숫자를 직접 입력하세요</span><span>1,000만원</span></div>
+          </div>
+
+          <div class="step">
+            <div class="step-head"><span class="mono">02 / PURPOSE</span><h2>어디에 쓸 건가요?</h2><span class="hint">여러 개 골라도 돼요</span></div>
+            <div class="purposes" id="purposes">
+              <button data-p="game"><span class="p-ico"><svg viewBox="0 0 24 24"><path d="M6 9h4M8 7v4M15 10h.01M18 8h.01M7.5 4h9A5.5 5.5 0 0 1 22 9.5v3.2a3.3 3.3 0 0 1-5.9 2L15 13.5H9l-1.1 1.2A3.3 3.3 0 0 1 2 12.7V9.5A5.5 5.5 0 0 1 7.5 4z"/></svg></span><b>게이밍</b><small>배그·롤·스팀 게임</small></button>
+              <button data-p="edit" class="on"><span class="p-ico"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M7 5l2 4M12 5l2 4M17 5l2 4M10 12.5v4l3.5-2z"/></svg></span><b>영상편집·작업</b><small>프리미어·다빈치·포토샵</small></button>
+              <button data-p="ai"><span class="p-ico"><svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4M10 10h4v4h-4z"/></svg></span><b>AI·개발</b><small>로컬 AI·코딩</small></button>
+              <button data-p="office"><span class="p-ico"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5M8 7h8M8 11h6"/></svg></span><b>사무·인강</b><small>문서·웹·온라인 강의</small></button>
+            </div>
+          </div>
+          <button class="summon" id="summonBtn">꿀조합 찾기 <span>↗</span></button>
+        </div>
+
+        <div class="altar" id="altar">
+          <span class="mono altar-tag">07 · DRAGON BALLS</span>
+          <svg class="dragon" id="dragon" viewBox="0 0 600 600" aria-hidden="true"></svg>
+          <div class="ring"></div>
+          <div class="balls" id="balls"></div>
+          <div class="altar-msg" id="altarMsg">드래곤볼 7개가 잠들어 있어요<small>예산과 용도를 고르고 소원을 빌어 보세요</small></div>
+          <span class="altar-box mono">PRICES BY DANAWA</span>
+        </div>
+      </div>
+
+      <div class="result" id="result" hidden>
+        <div class="result-main">
+          <div class="result-head">
+            <div>
+              <p class="eyebrow" id="resEyebrow">YOUR BUILD</p>
+              <h2 id="resTitle">꿀조합을 찾았어요</h2>
+            </div>
+            <button class="ghost" id="againBtn">↺ 다시 찾기</button>
+          </div>
+          <div class="list-header"><span>부품 / 주요 사양</span><span>최저가 / 바꾸기</span></div>
+          <ul class="build-list" id="buildList"></ul>
+          <p class="fine">가격은 다나와 조회 시점의 최저가(일부 현금 결제 조건 포함)예요. 부품을 누르면 쇼핑몰별 가격을 볼 수 있어요.</p>
+        </div>
+        <aside class="result-side">
+          <div class="total-card">
+            <p class="mono">TOTAL</p>
+            <div class="total" id="resTotal">0원</div>
+            <div class="meter"><div class="meter-fill" id="budgetFill"></div></div>
+            <p class="meter-note" id="budgetNote"></p>
+          </div>
+          <div class="side-card">
+            <h3>이 조합의 성능</h3>
+            <ul class="perf" id="perfList"></ul>
+          </div>
+          <div class="side-card">
+            <h3>호환성 체크 <span class="ok-all" id="compatAll"></span></h3>
+            <ul class="compat" id="compatList"></ul>
+          </div>
+          <div class="side-actions">
+            <button class="primary" id="saveBtn">캡슐에 저장</button>
+            <div class="two">
+              <button class="ghost" id="askBtn">신룡에게 묻기</button>
+              <button class="ghost" id="copyBtn">견적 복사</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ② 드래곤 레이더 -->
+    <section class="panel" id="tab-radar">
+      <div class="catalog">
+        <div class="section-heading">
+          <div><p class="eyebrow">COMPONENT EXPLORER</p><h2>부품별 최저가</h2></div>
+          <span class="result-count" id="radarRange"></span>
+        </div>
+        <div class="notice"><span>ⓘ</span> 다나와 최저가 기준(조회 시점)이에요. 제품을 누르면 쇼핑몰별 가격을 최저가부터 볼 수 있어요.</div>
+        <div class="search-row">
+          <form class="search" id="radarSearch">
+            <span>⌕</span>
+            <input id="radarQ" type="search" placeholder="제품 이름으로 찾기 (예: 5060, 삼성)" autocomplete="off" aria-label="부품 검색" />
+          </form>
+          <select id="sortSel" aria-label="정렬">
+            <option value="asc">낮은 가격순</option>
+            <option value="desc">높은 가격순</option>
+          </select>
+        </div>
+        <div class="category-tabs" id="catTabs"></div>
+        <p class="cat-desc" id="radarIntro"></p>
+        <div class="list-header"><span>부품 / 주요 사양</span><span>최저가 / 비교</span></div>
+        <div class="part-list" id="radarCards"></div>
+      </div>
+    </section>
+
+    <!-- ③ 캡슐 보관함 -->
+    <section class="panel" id="tab-capsule">
+      <div class="capsule-wrap">
+        <div class="capsule-head">
+          <div><p class="eyebrow">MY CAPSULES</p><h2>캡슐 보관함</h2><p>마음에 든 견적을 넣어두고, 두 개를 골라 나란히 비교해 보세요.</p></div>
+          <button class="primary" id="compareBtn" disabled>선택한 2개 비교</button>
+        </div>
+        <div class="capsules" id="capsules"></div>
+        <div class="compare" id="compareView" hidden></div>
+      </div>
+    </section>
+
+    <!-- ④ 신룡에게 묻기 -->
+    <section class="panel" id="tab-ask">
+      <div class="chat">
+        <div class="chat-head"><p class="eyebrow">ASK THE DRAGON</p><h2>신룡에게 묻기</h2></div>
+        <div class="chat-log" id="chatLog">
+          <div class="msg bot"><div class="avatar">龍</div><div class="bubble">나는 신룡이다. 컴퓨터를 몰라도 괜찮다. 궁금한 것을 편하게 물어보거라.<br/>예: <em>“그래픽카드는 왜 이렇게 비싸?”</em>, <em>“이 조합으로 게임도 돼?”</em></div></div>
+        </div>
+        <div class="chat-suggest" id="chatSuggest">
+          <button>이 조합으로 게임도 할 수 있어?</button>
+          <button>더 아낄 수 있는 부품이 있어?</button>
+          <button>조립은 어디에 맡기면 돼?</button>
+          <button>램 32GB면 충분해?</button>
+        </div>
+        <form class="chat-input" id="chatForm">
+          <label class="attach" title="꿀조합 찾기에서 만든 조합을 같이 보내요"><input type="checkbox" id="attachBuild" checked /><span id="attachLabel">현재 조합 함께 보내기</span></label>
+          <input id="chatQ" placeholder="신룡에게 물어볼 것을 적어주세요" autocomplete="off" />
+          <button type="submit">묻기</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="modal" hidden>
+    <div class="modal-box" role="dialog" aria-modal="true">
+      <button class="modal-x" id="modalX" aria-label="닫기">✕</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
